@@ -1,13 +1,3 @@
-"""
-##########################
-todo
-1. Постоянное хранилище данных
-2. Инлайн-кнопки для смены гарнира/мяса
-3. Разбить на модули
-4. Проверить линтерами
-5. Раскатить на сервер
-##########################
-"""
 import asyncio
 import logging
 import os
@@ -26,10 +16,6 @@ load_dotenv()
 
 API_TOKEN = os.getenv("TG_API_KEY")
 dp = Dispatcher()
-
-# Списки блюд
-garnishes = ["рис", "картошка пюре"]
-meats = ["курица терияки", "печень куриная"]
 
 # Текущее блюдо
 current_garnish = None
@@ -67,9 +53,18 @@ async def send_welcome(message: types.Message):
 @dp.message(F.text == "Собрать блюдо 🎲")
 async def assemble_dish(message: types.Message):
     global current_garnish, current_meat
-    current_garnish = random.choice(garnishes)
-    current_meat = random.choice(meats)
-    await message.answer(f"Вот твоё блюдо: {current_garnish} + {current_meat}", reply_markup=main_menu)
+    # Списки блюд
+    try:
+        with open("garnishes.txt", "r", encoding="utf-8") as f:
+            garnishes = [str(line) for line in f.readlines()]
+        with open("meats.txt", "r", encoding="utf-8") as f:
+            meats = [str(line) for line in f.readlines()]
+        current_garnish = random.choice(garnishes)
+        current_meat = random.choice(meats)
+        await message.answer(f"Вот твоё блюдо: {current_garnish.strip()} + {current_meat.strip()}",
+                             reply_markup=main_menu)
+    except IndexError:
+        await message.answer(f"Пока списки гарниров и мяса пусты, нечего составить! 🙂")
 
 
 @dp.message(F.text == "Добавить гарнир 🍚", StateFilter(default_state))
@@ -81,7 +76,8 @@ async def add_garnish_prompt(message: types.Message, state: FSMContext):
 @dp.message(StateFilter(FSMFillForm.garnish))
 async def add_garnish(message: types.Message, state: FSMContext):
     new_garnish = message.text
-    garnishes.append(new_garnish)
+    with open("garnishes.txt", "a", encoding="utf-8") as f:
+        f.write(f"{new_garnish}\n")
     await message.reply(f"Гарнир '{new_garnish}' добавлен!", reply_markup=main_menu)
     await state.clear()
 
@@ -95,7 +91,8 @@ async def add_meat_prompt(message: types.Message, state: FSMContext):
 @dp.message(StateFilter(FSMFillForm.meat))
 async def add_meat(message: types.Message, state: FSMContext):
     new_meat = message.text
-    meats.append(new_meat)
+    with open("meats.txt", "a", encoding="utf-8") as f:
+        f.write(f"{new_meat}\n")
     await message.reply(f"Мясо '{new_meat}' добавлено!", reply_markup=main_menu)
     await state.clear()
 
