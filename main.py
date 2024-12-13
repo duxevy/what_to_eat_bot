@@ -9,6 +9,7 @@ from aiogram.filters import CommandStart, StateFilter
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from dotenv import load_dotenv
 
@@ -53,7 +54,6 @@ async def send_welcome(message: types.Message):
 @dp.message(F.text == "Собрать блюдо 🎲")
 async def assemble_dish(message: types.Message):
     global current_garnish, current_meat
-    # Списки блюд
     try:
         with open("garnishes.txt", "r", encoding="utf-8") as f:
             garnishes = [str(line) for line in f.readlines()]
@@ -63,8 +63,71 @@ async def assemble_dish(message: types.Message):
         current_meat = random.choice(meats)
         await message.answer(f"Вот твоё блюдо: {current_garnish.strip()} + {current_meat.strip()}",
                              reply_markup=main_menu)
+        builder = InlineKeyboardBuilder()
+        builder.add(types.InlineKeyboardButton(
+            text="Сменить гарнир 🍚",
+            callback_data="change_garnish")
+        )
+        builder.add(types.InlineKeyboardButton(
+            text="Сменить мясо 🥩",
+            callback_data="change_meat")
+        )
+        await message.answer(
+            "Нажми на кнопки ниже, если хочешь сменить гарнир или мясо",
+            reply_markup=builder.as_markup()
+        )
     except IndexError:
         await message.answer(f"Пока списки гарниров и мяса пусты, нечего составить! 🙂")
+
+
+@dp.callback_query(F.data == "change_garnish")
+async def change_only_garnish(callback: types.CallbackQuery):
+    # Это супер плохо выглядит, но я пока не понимаю как можно сделать лучше
+    global current_garnish, current_meat
+    with open("garnishes.txt", "r", encoding="utf-8") as f:
+        garnishes = [str(line) for line in f.readlines()]
+    current_garnish = random.choice(garnishes)
+    await callback.message.answer(f"Вот твоё новое блюдо: {current_garnish.strip()} + {current_meat.strip()}",
+                                  reply_markup=main_menu)
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(
+        text="Сменить гарнир 🍚",
+        callback_data="change_garnish")
+    )
+    builder.add(types.InlineKeyboardButton(
+        text="Сменить мясо 🥩",
+        callback_data="change_meat")
+    )
+    await callback.message.answer(
+        "Нажми на кнопки ниже, если хочешь сменить гарнир или мясо",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "change_meat")
+async def change_only_meat(callback: types.CallbackQuery):
+    # Это супер плохо выглядит, но я пока не понимаю как можно сделать лучше
+    global current_garnish, current_meat
+    with open("meats.txt", "r", encoding="utf-8") as f:
+        meats = [str(line) for line in f.readlines()]
+    current_meat = random.choice(meats)
+    await callback.message.answer(f"Вот твоё новое блюдо: {current_garnish.strip()} + {current_meat.strip()}",
+                                  reply_markup=main_menu)
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(
+        text="Сменить гарнир 🍚",
+        callback_data="change_garnish")
+    )
+    builder.add(types.InlineKeyboardButton(
+        text="Сменить мясо 🥩",
+        callback_data="change_meat")
+    )
+    await callback.message.answer(
+        "Нажми на кнопки ниже, если хочешь сменить гарнир или мясо",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
 
 
 @dp.message(F.text == "Добавить гарнир 🍚", StateFilter(default_state))
